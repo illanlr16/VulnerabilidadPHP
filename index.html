@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe de Auditoría de Seguridad Web - PHP2Shell / RCE</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            900: '#0c4a6e',
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            900: '#7f1d1d',
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .code-block {
+            font-family: 'Fira Code', monospace;
+        }
+        /* Hide scrollbar for clean horizontal nav */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-rose-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand / Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-tr from-rose-600 to-amber-500 rounded-lg shadow-lg">
+                        <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg text-white tracking-wide">SEC-AUDIT</span>
+                        <span class="text-xs block text-slate-400">Informe Técnico de Seguridad Web</span>
+                    </div>
+                </div>
+
+                <!-- Target URL Badge -->
+                <div class="hidden md:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700">
+                    <span class="text-xs text-slate-400">Sistema Analizado:</span>
+                    <span class="text-xs font-mono font-semibold text-sky-400">app.twinteach.com</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        Evaluación RCE
+                    </span>
+                </div>
+
+                <!-- Action Button -->
+                <div>
+                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-sm transition-all flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-print"></i>
+                        <span class="hidden sm:inline">Exportar / Imprimir</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sub-header / Summary Banner -->
+    <div class="bg-gradient-to-r from-slate-950 via-slate-900 to-rose-950/40 border-b border-slate-800 py-6 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="md:flex md:items-center md:justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-2.5 py-0.5 rounded-md font-semibold font-mono">CVE-2024-4577 / PHP2SHELL</span>
+                        <span class="text-slate-400 text-xs"><i class="fa-regular fa-clock mr-1"></i>Auditoría Técnica de Infraestructura</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white mt-1 tracking-tight">
+                        Análisis Integral de Seguridad: PHP2Shell & RCE
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1 max-w-3xl">
+                        Informe técnico interactivo sobre prevención, diagnóstico forense y fortificación para entornos basados en Laravel y PHP.
+                    </p>
+                </div>
+                <!-- CVSS Score Badge Card -->
+                <div class="mt-4 md:mt-0 flex items-center space-x-4 bg-slate-800/90 p-4 rounded-xl border border-rose-500/30 shadow-xl backdrop-blur">
+                    <div class="text-center">
+                        <span class="text-xs uppercase tracking-wider text-slate-400 block font-semibold">Severidad CVSS</span>
+                        <span class="text-3xl font-black text-rose-500 tracking-tight">9.2</span>
+                        <span class="text-xs text-rose-400 font-bold block">CRÍTICO</span>
+                    </div>
+                    <div class="h-10 w-px bg-slate-700"></div>
+                    <div>
+                        <div class="text-xs text-slate-300 font-medium">Clasificación:</div>
+                        <div class="text-xs text-slate-400">Ejecución Remota de Código</div>
+                        <div class="text-[10px] text-rose-400/90 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Riesgo Máximo de Infraestructura</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <div class="bg-slate-900 border-b border-slate-800 sticky top-16 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 no-scrollbar" id="auditTabs">
+                <button onclick="switchTab('tab-concept')" id="btn-tab-concept" class="tab-btn active text-sky-400 border-sky-500 border-b-2 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-brands fa-php"></i>
+                    <span>1. Concepto y CVSS 9.2</span>
+                </button>
+                <button onclick="switchTab('tab-timeline')" id="btn-tab-timeline" class="tab-btn text-slate-400 hover:text-slate-200 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>2. Origen y Descubrimiento</span>
+                </button>
+                <button onclick="switchTab('tab-mechanism')" id="btn-tab-mechanism" class="tab-btn text-slate-400 hover:text-slate-200 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-bug"></i>
+                    <span>3. Mecánica y Versiones</span>
+                </button>
+                <button onclick="switchTab('tab-solutions')" id="btn-tab-solutions" class="tab-btn text-slate-400 hover:text-slate-200 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                    <span>4. Soluciones Generales</span>
+                </button>
+                <button onclick="switchTab('tab-twinteach')" id="btn-tab-twinteach" class="tab-btn text-slate-400 hover:text-slate-200 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-cubes"></i>
+                    <span>5. Verificación TwinTeach</span>
+                </button>
+                <button onclick="switchTab('tab-forensics')" id="btn-tab-forensics" class="tab-btn text-slate-400 hover:text-slate-200 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>6. Análisis Forense</span>
+                </button>
+                <button onclick="switchTab('tab-conclusions')" id="btn-tab-conclusions" class="tab-btn text-slate-400 hover:text-slate-200 font-medium text-xs sm:text-sm px-3 py-2 rounded-t-lg transition-all flex items-center space-x-2 whitespace-nowrap">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                    <span>7. Checklist y Conclusión</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+
+        <!-- TAB 1: CONCEPTO Y CVSS -->
+        <section id="tab-concept" class="tab-content space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60 shadow-inner">
+                <div class="max-w-4xl">
+                    <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                        <i class="fa-brands fa-php text-4xl text-indigo-400"></i>
+                        ¿Qué es PHP, por qué es crucial y qué es una Webshell (PHP2Shell)?
+                    </h2>
+                    <p class="text-slate-300 leading-relaxed mb-4">
+                        <strong class="text-white">PHP (Hypertext Preprocessor)</strong> es un lenguaje de programación interpretado del lado del servidor que impulsa aproximadamente el 75% del backend web global. Su función principal es procesar solicitudes de usuarios, ejecutar lógica de negocio, comunicarse con bases de datos y generar respuestas dinámicas (JSON para APIs o plantillas HTML).
+                    </p>
+                    <p class="text-slate-300 leading-relaxed mb-4">
+                        Debido a su posición central en la arquitectura servidor, si el intérprete de PHP procesa o ejecuta código no autorizado suministrado por un usuario externo, el atacante obtiene la capacidad de ejecutar comandos en el sistema operativo del servidor. A esto se le conoce como <strong class="text-rose-400">Remote Code Execution (RCE)</strong>.
+                    </p>
+                    <p class="text-slate-300 leading-relaxed">
+                        Una <strong class="text-amber-400">Webshell (o vulnerabilidad PHP2Shell)</strong> hace referencia al proceso o artefacto mediante el cual un atacante logra depositar o forzar la interpretación de un script PHP que actúa como una consola de mandos remota. Con ella, se pueden enviar órdenes del sistema operativo a través de peticiones HTTP habituales.
+                    </p>
+                </div>
+            </div>
+
+            <!-- CVSS Metodología y Gráficos -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div class="bg-slate-800/80 p-6 rounded-xl border border-slate-700 flex flex-col items-center">
+                    <h3 class="text-base font-bold text-white mb-4 self-start">Impacto en la Tríada CIA (CVSS v3.1)</h3>
+                    <div class="w-full max-w-md h-64">
+                        <canvas id="cvssChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h3 class="text-xl font-bold text-white">¿Por qué la nota 9.2/10 (Crítico)?</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        El sistema de evaluación CVSS (Common Vulnerability Scoring System) otorga un 9.2/10 a este tipo de fallos basándose en las siguientes métricas estandarizadas:
+                    </p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-slate-800/90 p-3 rounded-lg border border-slate-700">
+                            <span class="text-xs text-slate-400 block">Vector de Ataque (AV:N)</span>
+                            <span class="text-sm font-bold text-rose-400">Red (Remote)</span>
+                            <p class="text-[11px] text-slate-400 mt-1">Explotable remotamente vía HTTP sin requerir acceso a la red local.</p>
+                        </div>
+                        <div class="bg-slate-800/90 p-3 rounded-lg border border-slate-700">
+                            <span class="text-xs text-slate-400 block">Complejidad (AC:L)</span>
+                            <span class="text-sm font-bold text-rose-400">Baja</span>
+                            <p class="text-[11px] text-slate-400 mt-1">No exige condiciones de carrera complejas ni configuraciones raras.</p>
+                        </div>
+                        <div class="bg-slate-800/90 p-3 rounded-lg border border-slate-700">
+                            <span class="text-xs text-slate-400 block">Privilegios (PR:N)</span>
+                            <span class="text-sm font-bold text-rose-400">Ninguno</span>
+                            <p class="text-[11px] text-slate-400 mt-1">Un visitante anónimo sin sesión iniciada puede activar el exploit.</p>
+                        </div>
+                        <div class="bg-slate-800/90 p-3 rounded-lg border border-slate-700">
+                            <span class="text-xs text-slate-400 block">Impacto CIA (C:H/I:H/A:H)</span>
+                            <span class="text-sm font-bold text-rose-400">Alto / Máximo</span>
+                            <p class="text-[11px] text-slate-400 mt-1">Compromiso total de Confidencialidad, Integridad y Disponibilidad.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: ORIGEN Y DESCUBRIMIENTO -->
+        <section id="tab-timeline" class="tab-content hidden space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i class="fa-solid fa-calendar-days text-sky-400"></i>
+                    ¿Por qué y cuándo ocurrió / se descubrió el incidente?
+                </h2>
+                <p class="text-slate-300 leading-relaxed mb-6">
+                    Los incidentes de ejecución de código en entornos PHP y frameworks como Laravel suelen originarse por la divulgación de vulnerabilidades de día cero (0-day) en el motor del lenguaje o por errores de configuración en el manejo de peticiones web.
+                </p>
+
+                <!-- Chronological Timeline -->
+                <div class="relative border-l-2 border-slate-700 ml-4 space-y-8">
+                    <!-- Event 1 -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-2.5 top-1.5 w-5 h-5 rounded-full bg-sky-500 border-4 border-slate-900"></div>
+                        <span class="text-xs font-mono text-sky-400 font-bold">Junio de 2024</span>
+                        <h3 class="text-base font-bold text-white">Publicación CVE-2024-4577 (PHP CGI Argument Injection)</h3>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                            Investigadores de seguridad de DEVCORE revelaron una vulnerabilidad crítica de inyección de argumentos en PHP operando bajo CGI. Debido al procesamiento de secuencias de caracteres específicas (Best-Fit mapping en sustituciones de codificación), atacantes remotos pudieron pasar parámetros de línea de comandos al intérprete de PHP y ejecutar código de forma remota.
+                        </p>
+                    </div>
+
+                    <!-- Event 2 -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-2.5 top-1.5 w-5 h-5 rounded-full bg-amber-500 border-4 border-slate-900"></div>
+                        <span class="text-xs font-mono text-amber-400 font-bold">Escaneos Masivos y Explotación Activa</span>
+                        <p class="text-base font-bold text-white">Detección en Logs de Aplicación y Telemetría WAF</p>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                            A las pocas horas de la publicación de los Parches Oficiales, redes de bots globales iniciaron escaneos masivos en busca de servidores expuestos, intentando inyectar webshells mediante peticiones diseñadas a puntos de entrada comunes.
+                        </p>
+                    </div>
+
+                    <!-- Event 3 -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-2.5 top-1.5 w-5 h-5 rounded-full bg-emerald-500 border-4 border-slate-900"></div>
+                        <span class="text-xs font-mono text-emerald-400 font-bold">Respuesta e Inspección</span>
+                        <p class="text-base font-bold text-white">Auditoría Preventiva de Entornos Laravel</p>
+                        <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                            La necesidad de auditar aplicaciones como <span class="font-mono text-sky-300">app.twinteach.com</span> surge para verificar que ni el runtime del servidor ni la capa de gestión de archivos de Laravel presentan rutas de explotación ni rastros de compromiso previo.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: MECÁNICA Y VERSIONES -->
+        <section id="tab-mechanism" class="tab-content hidden space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i class="fa-solid fa-bug text-rose-500"></i>
+                    ¿En qué consiste la vulnerabilidad y a qué versiones afecta?
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700">
+                        <h3 class="font-bold text-white text-base mb-3 text-sky-400">Mecánica del Ataque (Vector RCE / PHP2Shell)</h3>
+                        <ul class="space-y-2 text-xs text-slate-300 list-disc list-inside leading-relaxed">
+                            <li><strong class="text-white">Subida de archivos sin validar:</strong> Un formulario que acepta archivos permite subir una extensión PHP o bypasses tipo <code class="text-rose-300 font-mono">.php.jpg</code> o <code class="text-rose-300 font-mono">.phtml</code>.</li>
+                            <li><strong class="text-white">Inyección de Argumentos en CGI:</strong> Mediante peticiones HTTP con caracteres Unicode especiales, se engaña al módulo PHP para habilitar directivas como <code class="text-rose-300 font-mono">allow_url_include</code> o <code class="text-rose-300 font-mono">auto_prepend_file</code>.</li>
+                            <li><strong class="text-white">Deserialización de objetos Inseguros:</strong> Procesamiento de entradas no saneadas que activan llamadas a funciones peligrosas del sistema.</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700">
+                        <h3 class="font-bold text-white text-base mb-3 text-rose-400">Matriz de Versiones Afectadas</h3>
+                        <div class="space-y-3 text-xs">
+                            <div class="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded">
+                                <span class="font-bold text-rose-300 block">PHP 8.3 (Versiones &lt; 8.3.8)</span>
+                                <span class="text-slate-400 text-[11px]">Vulnerable a CVE-2024-4577 si opera bajo modo CGI o configuraciones específicas.</span>
+                            </div>
+                            <div class="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded">
+                                <span class="font-bold text-rose-300 block">PHP 8.2 (Versiones &lt; 8.2.20) y PHP 8.1 (&lt; 8.1.29)</span>
+                                <span class="text-slate-400 text-[11px]">Requieren actualización inmediata a sus parches de seguridad respectivos.</span>
+                            </div>
+                            <div class="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded">
+                                <span class="font-bold text-amber-300 block">PHP 7.x / 5.x (End of Life)</span>
+                                <span class="text-slate-400 text-[11px]">Versiones descatalogadas sin soporte oficial que no reciben parches contra RCE.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: SOLUCIONES GENERALES -->
+        <section id="tab-solutions" class="tab-content hidden space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                    <i class="fa-solid fa-screwdriver-wrench text-emerald-400"></i>
+                    ¿Qué soluciones y estrategias de protección existen?
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-2">
+                                <i class="fa-solid fa-download"></i>
+                                <span>1. Parcheo del Runtime</span>
+                            </div>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Actualizar el intérprete de PHP en el servidor a las versiones corregidas de la rama oficial (8.3.8+, 8.2.20+ o 8.1.29+).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center space-x-2 text-sky-400 font-bold text-sm mb-2">
+                                <i class="fa-solid fa-sliders"></i>
+                                <span>2. Hardening en php.ini</span>
+                            </div>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Deshabilitar la ejecución de mandos del sistema operativo desactivando funciones sensibles dentro del archivo de configuración principal de PHP.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm mb-2">
+                                <i class="fa-solid fa-box-archive"></i>
+                                <span>3. Aislamiento e Inmutabilidad</span>
+                            </div>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Ejecutar la aplicación en contenedores (Docker/Kubernetes) con sistema de archivos en modo lectura e impedir ejecuciones en carpetas de uploads.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Example for php.ini hardening -->
+                <div class="mt-6 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <span class="text-xs font-mono text-slate-400 block mb-2">// Directiva recomendada en php.ini para entornos de producción:</span>
+                    <pre class="text-xs text-emerald-400 font-mono overflow-x-auto">disable_functions = exec, passthru, shell_exec, system, proc_open, popen, curl_exec, curl_multi_exec, parse_ini_file, show_source</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: VERIFICACIÓN ESPECÍFICA TWINTEACH -->
+        <section id="tab-twinteach" class="tab-content hidden space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60">
+                <div class="max-w-4xl">
+                    <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-3">
+                        <i class="fa-solid fa-cubes text-sky-400"></i>
+                        Verificación Técnica: Arquitectura Angular + Laravel (app.twinteach.com)
+                    </h2>
+                    <p class="text-slate-300 text-sm mb-6">
+                        Dado que <span class="font-mono text-sky-400">app.twinteach.com</span> utiliza un desacoplamiento entre <strong class="text-white">Angular (Frontend SPA)</strong> y <strong class="text-white">Laravel (Backend REST API)</strong>, se deben aplicar las siguientes comprobaciones de seguridad específicas:
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Verification Step A -->
+                    <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-700">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold">A</span>
+                            <h3 class="font-bold text-white text-sm">Verificación de Modode Depuración (APP_DEBUG)</h3>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-3">
+                            Confirmar que la variable de entorno en Laravel está desactivada en producción para no exponer trazas del sistema ni rutas internas en respuestas JSON.
+                        </p>
+                        <pre class="bg-slate-950 p-2.5 rounded text-[11px] font-mono text-emerald-400">APP_DEBUG=false
+APP_ENV=production</pre>
+                    </div>
+
+                    <!-- Verification Step B -->
+                    <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-700">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold">B</span>
+                            <h3 class="font-bold text-white text-sm">Validación Estricta de Almacenamiento (Storage)</h3>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-3">
+                            Garantizar que los archivos subidos vía API no se guarden directamente en la raíz de <code class="text-sky-300 font-mono">public/</code> y se empleen discos aislados sin permisos de ejecución de scripts PHP.
+                        </p>
+                        <pre class="bg-slate-950 p-2.5 rounded text-[11px] font-mono text-slate-300">$request->file('adjunto')->store('uploads', 's3'); // O disco no ejecutable</pre>
+                    </div>
+
+                    <!-- Verification Step C -->
+                    <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-700">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold">C</span>
+                            <h3 class="font-bold text-white text-sm">Auditoría de Dependencias PHP (Composer)</h3>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-3">
+                            Verificar que el archivo <code class="text-sky-300 font-mono">composer.lock</code> no contiene paquetes desactualizados ni librerías vulnerables a deserialización.
+                        </p>
+                        <pre class="bg-slate-950 p-2.5 rounded text-[11px] font-mono text-sky-300">composer audit</pre>
+                    </div>
+
+                    <!-- Verification Step D -->
+                    <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-700">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-bold">D</span>
+                            <h3 class="font-bold text-white text-sm">Restricción CORS y Headers de Seguridad</h3>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-3">
+                            Restringir el acceso CORS en Laravel (<code class="text-sky-300 font-mono">config/cors.php</code>) exclusivamente al dominio de origen del cliente Angular.
+                        </p>
+                        <pre class="bg-slate-950 p-2.5 rounded text-[11px] font-mono text-slate-300">'allowed_origins' => ['https://app.twinteach.com'],</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: ANÁLISIS FORENSE -->
+        <section id="tab-forensics" class="tab-content hidden space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60">
+                <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-3">
+                    <i class="fa-solid fa-magnifying-glass text-amber-400"></i>
+                    Análisis Forense: ¿Cómo detectar si el sistema fue vulnerado?
+                </h2>
+                <p class="text-slate-300 text-sm mb-6">
+                    Procedimientos esenciales para determinar si existió algún intento de explotación exitoso o presencia de artefactos maliciosos en la infraestructura.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700">
+                        <i class="fa-solid fa-file-lines text-2xl text-sky-400 mb-3 block"></i>
+                        <h3 class="font-bold text-white text-sm mb-2">1. Inspección de Access Logs Web</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Analizar registros de Nginx o Apache buscando peticiones con parámetros anómalos (<code class="text-rose-300 font-mono">?cmd=</code>, <code class="text-rose-300 font-mono">?exec=</code>, secuencias Unicode o accesos directos a archivos <code class="text-rose-300 font-mono">.php</code> dentro de subdirectorios de uploads).
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700">
+                        <i class="fa-solid fa-folder-tree text-2xl text-amber-400 mb-3 block"></i>
+                        <h3 class="font-bold text-white text-sm mb-2">2. Verificación de Integridad de Código</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Comparar los hashes SHA-256 de los archivos del proyecto en producción contra el repositorio de Git para detectar archivos nuevos o modificados imprevistamente en <code class="text-amber-300 font-mono">public/storage</code> o <code class="text-amber-300 font-mono">/tmp</code>.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-700">
+                        <i class="fa-solid fa-network-wired text-2xl text-rose-400 mb-3 block"></i>
+                        <h3 class="font-bold text-white text-sm mb-2">3. Monitorización de Procesos y Red</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Inspeccionar conexiones de red salientes no autorizadas (posibles reverse shells) o procesos secundarios inusuales generados por el usuario web (<code class="text-rose-300 font-mono">www-data</code> / <code class="text-rose-300 font-mono">nginx</code>).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 7: CHECKLIST Y CONCLUSIONES -->
+        <section id="tab-conclusions" class="tab-content hidden space-y-8">
+            <div class="bg-slate-800/50 rounded-2xl p-6 sm:p-8 border border-slate-700/60">
+                <h2 class="text-2xl font-bold text-white mb-2 flex items-center gap-3">
+                    <i class="fa-solid fa-clipboard-check text-emerald-400"></i>
+                    Checklist de Seguridad y Conclusión de Auditoría
+                </h2>
+                <p class="text-slate-300 text-sm mb-6">
+                    Marque las tareas completadas para verificar el cumplimiento del plan de protección para TwinTeach:
+                </p>
+
+                <!-- Interactive Checklist -->
+                <div class="space-y-3 mb-8" id="checklist-container">
+                    <label class="flex items-start space-x-3 p-3 bg-slate-900/80 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition-all">
+                        <input type="checkbox" onchange="updateChecklist()" class="mt-1 form-checkbox h-4 w-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-semibold text-white block">Actualización de PHP Runtime a versión con parche de seguridad</span>
+                            <span class="text-[11px] text-slate-400">Garantiza protección contra vulnerabilidades conocidas a nivel de intérprete.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start space-x-3 p-3 bg-slate-900/80 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition-all">
+                        <input type="checkbox" onchange="updateChecklist()" class="mt-1 form-checkbox h-4 w-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-semibold text-white block">Configurar `disable_functions` en php.ini</span>
+                            <span class="text-[11px] text-slate-400">Desactiva system, exec, passthru, shell_exec y funciones de sistema.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start space-x-3 p-3 bg-slate-900/80 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition-all">
+                        <input type="checkbox" onchange="updateChecklist()" class="mt-1 form-checkbox h-4 w-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-semibold text-white block">Verificar APP_DEBUG=false en el entono de producción Laravel</span>
+                            <span class="text-[11px] text-slate-400">Previene la exposición no deseada de datos sensibles del backend.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start space-x-3 p-3 bg-slate-900/80 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition-all">
+                        <input type="checkbox" onchange="updateChecklist()" class="mt-1 form-checkbox h-4 w-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-semibold text-white block">Bloquear la ejecución de scripts PHP en el directorio de almacenamiento público</span>
+                            <span class="text-[11px] text-slate-400">Evita que la subida de un script malicioso sea interpretada por el servidor web.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start space-x-3 p-3 bg-slate-900/80 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition-all">
+                        <input type="checkbox" onchange="updateChecklist()" class="mt-1 form-checkbox h-4 w-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-0">
+                        <div>
+                            <span class="text-xs font-semibold text-white block">Ejecutar revisión de dependencias mediante `composer audit`</span>
+                            <span class="text-[11px] text-slate-400">Asegura la ausencia de librerías vulnerables dentro del ecosistema de Laravel.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="p-4 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-300">Estado del Checklist:</span>
+                    <span id="checklist-progress" class="text-xs font-mono bg-sky-500/20 text-sky-300 px-3 py-1 rounded-full font-bold">0 / 5 Completado</span>
+                </div>
+
+                <!-- Dictamen Final -->
+                <div class="mt-6 p-5 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
+                    <h3 class="font-bold text-emerald-400 text-sm mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-shield"></i> Dictamen de Auditoría
+                    </h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Las vulnerabilidades de tipo PHP2Shell / RCE representan una amenaza crítica para la confidencialidad e integridad del sistema. Sin embargo, aplicando el parche del runtime de PHP, restringiendo las directivas del motor mediante <code class="text-emerald-300 font-mono">php.ini</code> y manteniendo las buenas prácticas de arquitectura desacoplada de Laravel/Angular, el sistema <span class="font-mono text-sky-300">app.twinteach.com</span> alcanza un nivel óptimo de resiliencia y protección.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>Informe de Auditoría Técnica de Ciberseguridad — Generado para evaluación técnica de <span class="text-slate-400 font-mono">app.twinteach.com</span></p>
+            <p class="mt-1 text-[11px] text-slate-600">Documento Educativo, Defensivo y de Fortificación</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Switch Navigation Tabs
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-sky-400', 'border-sky-500', 'border-b-2');
+                btn.classList.add('text-slate-400');
+            });
+
+            const targetTab = document.getElementById(tabId);
+            if(targetTab) {
+                targetTab.classList.remove('hidden');
+            }
+
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-sky-400', 'border-sky-500', 'border-b-2');
+            }
+        }
+
+        // Update Checklist Counter
+        function updateChecklist() {
+            const checkboxes = document.querySelectorAll('#checklist-container input[type="checkbox"]');
+            const total = checkboxes.length;
+            let checkedCount = 0;
+
+            checkboxes.forEach(cb => {
+                if(cb.checked) checkedCount++;
+            });
+
+            const progressBadge = document.getElementById('checklist-progress');
+            progressBadge.innerText = `${checkedCount} / ${total} Completado`;
+
+            if(checkedCount === total) {
+                progressBadge.classList.remove('bg-sky-500/20', 'text-sky-300');
+                progressBadge.classList.add('bg-emerald-500/20', 'text-emerald-300');
+            } else {
+                progressBadge.classList.remove('bg-emerald-500/20', 'text-emerald-300');
+                progressBadge.classList.add('bg-sky-500/20', 'text-sky-300');
+            }
+        }
+
+        // Initialize Chart.js
+        window.onload = function() {
+            const ctx = document.getElementById('cvssChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'Confidencialidad',
+                        'Integridad',
+                        'Disponibilidad',
+                        'Explotabilidad Remota',
+                        'Facilidad de Acceso'
+                    ],
+                    datasets: [{
+                        label: 'Severidad del Impacto (CVSS 9.2)',
+                        data: [100, 100, 100, 95, 90],
+                        fill: true,
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(239, 68, 68, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#94a3b8', font: { size: 10 } },
+                            ticks: { backdropColor: 'transparent', color: '#64748b', stepSize: 20 },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0', font: { size: 11 } } }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
